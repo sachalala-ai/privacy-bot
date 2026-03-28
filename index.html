@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marloo Privacy Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --coral:       #2563eb;
+    --coral-dark:  #1d4ed8;
+    --coral-light: #3b82f6;
+    --navy:        #1a1e2e;
+    --navy-mid:    #252a3d;
+    --slate:       #4a5068;
+    --white:       #ffffff;
+    --off-white:   #f7f7f8;
+    --border:      #e8e9ed;
+    --text-main:   #1a1e2e;
+    --text-muted:  #6b7280;
+    --text-light:  #9ca3af;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #f0f0f2;
+    min-height: 100vh;
+  }
+
+  .demo-bg {
+    position: fixed;
+    inset: 0;
+    background: #f7f7f8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .demo-site { text-align: center; }
+
+  .demo-logo {
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: -0.5px;
+    margin-bottom: 10px;
+  }
+
+  .demo-logo span { color: var(--coral); }
+
+  .demo-tagline {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  /* ===== LAUNCHER ===== */
+  #widget-launcher {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: var(--coral);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 24px rgba(37,99,235,0.45), 0 2px 8px rgba(0,0,0,0.12);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s;
+    z-index: 9998;
+  }
+
+  #widget-launcher:hover {
+    background: var(--coral-dark);
+    transform: scale(1.07);
+    box-shadow: 0 10px 32px rgba(37,99,235,0.55), 0 4px 12px rgba(0,0,0,0.14);
+  }
+
+  #widget-launcher.open .icon-chat  { display: none; }
+  #widget-launcher.open .icon-close { display: flex !important; }
+
+  .pulse-ring {
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    border: 2px solid rgba(37,99,235,0.4);
+    animation: pulseRing 2.8s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes pulseRing {
+    0%,100% { transform: scale(1); opacity: 0.55; }
+    50%      { transform: scale(1.2); opacity: 0; }
+  }
+
+  /* ===== CHAT WINDOW ===== */
+  #chat-window {
+    position: fixed;
+    bottom: 100px;
+    right: 28px;
+    width: 420px;
+    max-width: calc(100vw - 36px);
+    height: 780px;
+    max-height: calc(100vh - 120px);
+    background: var(--white);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    box-shadow:
+      0 32px 72px rgba(26,30,46,0.18),
+      0 8px 24px rgba(26,30,46,0.10);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 9999;
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s ease;
+    transform-origin: bottom right;
+  }
+
+  #chat-window.open {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .chat-header {
+    background: var(--navy);
+    padding: 16px 18px 14px;
+    border-bottom: none;
+    flex-shrink: 0;
+  }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .brand-group {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+  }
+
+  .brand-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--coral);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    box-shadow: 0 3px 10px rgba(37,99,235,0.4);
+    flex-shrink: 0;
+  }
+
+  .brand-name {
+    font-size: 14.5px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: -0.2px;
+  }
+
+  .status-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 6px rgba(74,222,128,0.7);
+  }
+
+  .status-txt {
+    font-size: 11px;
+    color: rgba(255,255,255,0.38);
+  }
+
+  .cert-row {
+    display: flex;
+    gap: 5px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .cert {
+    font-size: 10px;
+    color: rgba(255,255,255,0.55);
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 4px;
+    padding: 2px 7px;
+  }
+
+  .pills-wrap {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--off-white);
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+
+  .pill {
+    font-size: 11px;
+    color: var(--coral);
+    background: rgba(37,99,235,0.07);
+    border: 1px solid rgba(37,99,235,0.22);
+    border-radius: 8px;
+    padding: 6px 9px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: normal;
+    line-height: 1.4;
+    text-align: left;
+  }
+
+  .pill:hover {
+    background: rgba(37,99,235,0.15);
+    border-color: rgba(37,99,235,0.45);
+    color: var(--coral-dark);
+  }
+
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--white);
+    scroll-behavior: smooth;
+  }
+
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .msg {
+    display: flex;
+    flex-direction: column;
+    max-width: 86%;
+    animation: fadeUp 0.22s ease;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(7px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg.user { align-self: flex-end; align-items: flex-end; }
+  .msg.bot  { align-self: flex-start; align-items: flex-start; }
+
+  .msg-with-avatar {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .bot-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--coral);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+    box-shadow: 0 2px 6px rgba(37,99,235,0.35);
+  }
+
+  .bubble {
+    padding: 10px 13px;
+    border-radius: 16px;
+    font-size: 13.5px;
+    line-height: 1.58;
+  }
+
+  .msg.user .bubble {
+    background: var(--coral);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+
+  .msg.bot .bubble {
+    background: var(--off-white);
+    color: var(--text-main);
+    border-bottom-left-radius: 4px;
+    border: 1px solid var(--border);
+  }
+
+  .bubble strong { font-weight: 600; color: var(--navy); }
+  .msg.user .bubble strong { color: #fff; }
+  .bubble a { color: var(--coral); text-decoration: none; }
+  .bubble a:hover { text-decoration: underline; }
+
+  .ts {
+    font-size: 10px;
+    color: var(--text-light);
+    margin-top: 3px;
+  }
+
+  .typing-dots {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 11px 14px;
+    background: var(--off-white);
+    border-radius: 16px;
+    border-bottom-left-radius: 4px;
+    border: 1px solid var(--border);
+    width: fit-content;
+    align-self: flex-start;
+  }
+
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text-light);
+    animation: bounce 1.3s ease-in-out infinite;
+  }
+
+  .dot:nth-child(2) { animation-delay: 0.15s; }
+  .dot:nth-child(3) { animation-delay: 0.30s; }
+
+  @keyframes bounce {
+    0%,60%,100% { transform: translateY(0); opacity: 0.4; }
+    30%          { transform: translateY(-5px); opacity: 1; }
+  }
+
+  .input-area {
+    padding: 12px 14px 14px;
+    border-top: 1px solid var(--border);
+    background: var(--white);
+    flex-shrink: 0;
+  }
+
+  .input-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 9px;
+    background: var(--off-white);
+    border: 1.5px solid var(--border);
+    border-radius: 13px;
+    padding: 8px 10px 8px 13px;
+    transition: border-color 0.15s;
+  }
+
+  .input-row:focus-within {
+    border-color: var(--coral);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  }
+
+  #chat-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    color: var(--text-main);
+    resize: none;
+    max-height: 90px;
+    line-height: 1.5;
+  }
+
+  #chat-input::placeholder { color: var(--text-light); }
+
+  #send-btn {
+    width: 33px; height: 33px;
+    border-radius: 9px;
+    background: var(--coral);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s, transform 0.15s;
+    margin-bottom: 1px;
+  }
+
+  #send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  #send-btn:hover:not(:disabled) { background: var(--coral-dark); transform: scale(1.07); }
+
+  .footer-note {
+    margin-top: 9px;
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-light);
+  }
+
+  .footer-note a { color: var(--coral); text-decoration: none; opacity: 0.7; }
+  .footer-note a:hover { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="demo-bg">
+  <div class="demo-site">
+    <div class="demo-logo">Mar<span>loo</span></div>
+    <div class="demo-tagline">AI for UK Financial Advisers — click the widget to ask about privacy &amp; data security</div>
+  </div>
+</div>
+
+<button id="widget-launcher" onclick="toggleChat()" title="Open Privacy Assistant">
+  <div class="pulse-ring"></div>
+  <svg class="icon-chat" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+  </svg>
+  <svg class="icon-close" style="display:none;align-items:center;justify-content:center;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round">
+    <line x1="18" y1="6" x2="6" y2="18"/>
+    <line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+</button>
+
+<div id="chat-window">
+
+  <div class="chat-header">
+    <div class="header-row">
+      <div class="brand-group">
+        <div class="brand-icon">🔒</div>
+        <div>
+          <div class="brand-name">Marloo Data Privacy Assistant</div>
+        </div>
+      </div>
+      <div class="status-group">
+        <div class="status-dot"></div>
+        <span class="status-txt">Online</span>
+      </div>
+    </div>
+    <div class="cert-row">
+      <span class="cert">SOC 2 Type II</span>
+      <span class="cert">UK GDPR</span>
+    </div>
+  </div>
+
+  <div class="pills-wrap" id="pills">
+    <div class="pill" onclick="ask('I\'m a UK customer — is my data stored in the UK?')">Is my data stored in the UK?</div>
+    <div class="pill" onclick="ask('Is any UK data ever processed outside the UK/EEA, even temporarily?')">Is my data ever processed outside the UK?</div>
+    <div class="pill" onclick="ask('Is Marloo compliant with UK GDPR?')">Is Marloo UK GDPR compliant?</div>
+    <div class="pill" onclick="ask('Do they have a standard Data Processing Agreement (DPA) available for customers?')">Do you have a Data Processing Agreement?</div>
+    <div class="pill" onclick="ask('Is the DPA built into their Terms of Service or a separate document?')">Is the DPA separate from the Terms of Service?</div>
+    <div class="pill" onclick="ask('What happens if there\'s a data breach — do they notify within 72 hours?')">What happens if there is a data breach?</div>
+    <div class="pill" onclick="ask('What happens if you lose my data?')">What happens if you lose my data?</div>
+    <div class="pill" onclick="ask('If I cancel today, what happens with my data?')">If I cancel today, what happens with my data?</div>
+  </div>
+
+  <div class="messages" id="messages">
+    <div class="msg bot">
+      <div class="msg-with-avatar">
+        <div class="bot-avatar">M</div>
+        <div class="bubble">
+          👋 Hi! I'm Marloo's <strong>Privacy Assistant</strong>. I can answer questions about how Marloo collects, stores, protects, and handles your data under UK GDPR and our Privacy Policy.<br><br>
+          Try a quick question above, or type your own below.
+        </div>
+      </div>
+      <div class="ts">just now</div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-row">
+      <textarea id="chat-input" rows="1" placeholder="Ask about privacy, GDPR, encryption, data rights…" onkeydown="handleKey(event)" oninput="resize(this)"></textarea>
+      <button id="send-btn" onclick="send()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+    <div class="footer-note">
+      <a href="https://trust.gomarloo.com" target="_blank">trust.gomarloo.com</a>
+      &nbsp;·&nbsp;
+      <a href="https://www.gomarloo.com/uk/privacy-policy" target="_blank">Privacy Policy</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// API key is stored securely in Vercel environment variables
+
+
+let isOpen = false, loading = false;
+const hist = [];
+
+const SYSTEM = `You are Marloo's Privacy & Data Security Assistant, embedded on gomarloo.com/uk. You help UK financial advisers understand how Marloo handles their data and their clients' data. Be warm, friendly, and accurate. Use plain English — no legalese. Base all answers on the facts below. Never invent facts.
+
+RESPONSE STYLE — CRITICAL:
+- Always lead with a short, direct answer of 1-2 sentences maximum.
+- Do not give long explanations upfront.
+- After your short answer, always end with one of these follow-up lines (vary them naturally):
+  "Want me to go into more detail on that?"
+  "Happy to explain more if that would help."
+  "Does that answer your question, or would you like more detail?"
+- If the user asks for more detail or says yes, then provide the fuller explanation with bullet points and relevant links.
+- Only include links when the user has asked for more detail.
+
+Key links to reference when going into detail:
+- Privacy Policy: [gomarloo.com/uk/privacy-policy](https://www.gomarloo.com/uk/privacy-policy)
+- Trust Centre (security details, DPA, sub-processors): [trust.gomarloo.com](https://trust.gomarloo.com)
+- Background & FAQ: [gomarloo.com/background](https://www.gomarloo.com/background)
+- Compliance/data requests: [compliance@gomarloo.com](mailto:compliance@gomarloo.com)
+- Template consent language: [team@gomarloo.com](mailto:team@gomarloo.com)
+- Support/deletion requests: [support@gomarloo.com](mailto:support@gomarloo.com)
+- EU/UK privacy representative: [Prighter Group](https://app.prighter.com/portal/15980164479)
+- ICO (UK regulator): [ico.org.uk](https://ico.org.uk)
+
+=== COMPANY DETAILS ===
+Marloo Limited — New Zealand registered company (no. 9118972), Lot 3, 130 Ponsonby Road, Grey Lynn, Auckland, New Zealand.
+Offices in Sydney, Australia and London, United Kingdom.
+Contact: team@gomarloo.com | compliance@gomarloo.com | support@gomarloo.com
+Privacy policy last updated: September 2025.
+UK/EEA Data Protection Officer: Hardy Michel
+Australia/NZ DPO: Shakeel Lala
+EU/UK privacy representative: Prighter Group — https://app.prighter.com/portal/15980164479
+
+=== WHAT MARLOO DOES ===
+AI assistant for financial advisers. Processes calendar events, meetings, calls, and uploaded documents to automate admin, create unified client records, and generate draft advice documents (fact-finds, review letters, etc). Integrates with Outlook/Google Calendar and all major meeting platforms (Teams, Zoom, Google Meet, Webex).
+
+=== GDPR & COMPLIANCE ===
+- UK GDPR compliant (and EU GDPR / NZ Privacy Act 2020 / Australian Privacy Act 1988)
+- SOC 2 Type II certified
+- GDPR-aligned privacy programme in place from before any customers used Marloo
+- Lawful bases used: Contract (for delivering the service), Legitimate Interests (technical/security data), Consent (marketing, voluntary sign-up info)
+- No automated decision-making processes
+- Honour deletion requests at any time
+
+=== DATA PROCESSING AGREEMENT (DPA) ===
+- A standard DPA is available for customers — it is a SEPARATE document from the Terms of Service
+- Annex 2 of the DPA sets out encryption standards, access controls, audit logging, and incident-response procedures
+- DPA covers all sub-processors and their obligations
+
+=== DATA STORAGE & LOCATION ===
+- Primary database: Amazon Web Services (AWS) — Sydney, Australia region
+- UK/EEA customers: data is NOT stored in UK or EEA — primary storage is AWS Sydney
+- Sub-processors that process data in the United States:
+  • AssemblyAI — transcription; data deleted immediately once received by Marloo
+  • Recall — meeting bots; data deleted after 7 days (US-hosted infrastructure)
+  • Anthropic — LLM/AI summaries; ZERO data retention (enterprise agreement — prompts discarded the moment a response is returned)
+  • OpenAI — also an LLM provider; zero data retention for Marloo service inputs
+- Other infrastructure providers: Amazon Web Services NZ Ltd, Supabase Inc., Cloudflare Inc.
+- Transient email/edge traffic may pass through Cloudflare or Amazon SES but no customer data is stored at those points
+- Daily encrypted backups taken and stored in the same AWS Sydney region
+
+=== INTERNATIONAL DATA TRANSFERS (UK/EEA) ===
+- Transfers outside EEA/UK are protected by Standard Contractual Clauses (SCCs) approved by the UK ICO / European Commission
+- Also relies on EU-U.S. Data Privacy Framework (EU-U.S. DPF), UK Extension to EU-U.S. DPF, and Swiss-U.S. DPF
+- Each recipient is subject to appropriate safeguards and due diligence
+
+=== ENCRYPTION & SECURITY ===
+- At rest: AES-256 encryption
+- In transit: TLS 1.2/1.3
+- Row-Level Security on every database table
+- JWT-authenticated API requests (signed by Marloo's Auth service)
+- Mandatory MFA for all Marloo staff accessing production systems
+- Role-based access controls — restricted to authorised staff only
+- Access logs retained for minimum 12 months, regularly reviewed
+- Full technical/organisational measures: trust.gomarloo.com and DPA Annex 2
+
+=== DATA BREACH & INCIDENT RESPONSE ===
+- UK: 72-hour notification to ICO if breach likely to result in risk to individuals' rights and freedoms
+- Australia: Notifiable Data Breach Scheme — assessment within 30 days of suspected breach; notify OAIC and individuals if serious harm likely
+- Incident response procedures published in Trust Centre and DPA Annex 2
+- No publicly reported security incidents to date
+- If a breach affects you: Marloo will investigate, contain, notify the appropriate regulator, and keep you informed as required by law
+
+=== AI TRAINING — CRITICAL FACT ===
+- Customer data is NEVER used to train, fine-tune, or improve any AI models (Marloo's or third-party)
+- Data remains isolated per customer environment
+- Anthropic: zero data retention enterprise agreement — prompts discarded after response
+- OpenAI: zero data retention for Marloo service inputs
+- AssemblyAI: data deleted immediately once transcription received by Marloo
+
+=== DATA OWNERSHIP ===
+- All templates, transcripts, summaries, and file notes belong to the CUSTOMER
+- Marloo only retains the limited right to process data to deliver the service
+- Marloo does not reuse or disclose customer content for any other purpose
+- Marloo does NOT sell customer data
+
+=== DATA RETENTION & DELETION ===
+- Meeting bot recordings (Recall): auto-deleted within 7 days
+- Webapp recordings: stored until user deletes them
+- Transcripts and summaries: stored until user deletes them
+- Data remains available while account is active
+- On account cancellation: customer may instruct full deletion or export of all data
+  → Working copies deleted; one encrypted legal-backup copy kept up to 7 years (shorter on request)
+- Specific item deletion: email support@gomarloo.com
+- Deletion control preferences panel coming soon
+
+=== DATA EXPORT ===
+- Yes, customers can export all their data
+- Request via account settings or by emailing support@gomarloo.com
+
+=== WHAT DATA IS COLLECTED ===
+From advisers/customers:
+- Name, phone, email, address, organisation
+- Login details (via cookies for authentication)
+- Calendar details, meeting details, meeting notes, transcripts (from Google/Microsoft integration)
+- Client-related documents and uploads
+- Financial info (for referral programme rewards): bank account holder name, number, sort code/BSB
+
+From website visitors:
+- Voluntarily provided info (name, email, etc. via enquiry forms)
+- Technical data: browser type, device info, IP address (via cookies)
+
+=== COOKIES ===
+Three types: Essential (required for site to function), Preference (personalisation), Performance (analytics/usage stats)
+
+=== UK/EEA DATA SUBJECT RIGHTS ===
+Under UK GDPR, individuals have the right to:
+1. Access their personal data (Subject Access Request)
+2. Correct inaccurate or incomplete data
+3. Erasure ("right to be forgotten")
+4. Restriction of processing
+5. Data portability
+6. Object to processing
+7. Opt out of marketing at any time
+8. Complain to the Information Commissioner's Office (ICO)
+9. Withdraw consent at any time (doesn't affect prior lawful processing)
+
+To exercise rights: compliance@gomarloo.com
+For marketing opt-out: support@gomarloo.com or unsubscribe link in emails
+Via EU/UK privacy rep: https://app.prighter.com/portal/15980164479
+
+=== CLIENT CONSENT (ADVISER RESPONSIBILITY) ===
+- Marloo allows advisers to configure prompts to obtain explicit consent before recording any client interaction
+- Consent is securely documented within the system
+- Advisers are responsible for informing their own clients that meetings are recorded, per their regulatory obligations
+- Contact team@gomarloo.com for template consent language
+
+=== SHARING DATA WITH THIRD PARTIES ===
+Marloo shares data with: infrastructure/cloud providers (AWS, Supabase, Cloudflare), AI/LLM providers (Anthropic, OpenAI — zero retention), government/regulators if legally required, professional advisers (auditors, lawyers), parties in a business transaction. DPAs in place with all processors where required.
+Marloo does NOT share data with advertisers or sell data.
+
+=== CONTACT & COMPLAINTS ===
+- General enquiries: team@gomarloo.com
+- Data/compliance requests: compliance@gomarloo.com
+- Support/deletion: support@gomarloo.com
+- ICO (UK regulator): ico.org.uk
+- Privacy Policy: gomarloo.com/uk/privacy-policy
+- Trust Centre: trust.gomarloo.com
+- Background/FAQ: gomarloo.com/background
+
+If you don't know the answer to something specific, say so honestly and direct them to compliance@gomarloo.com or trust.gomarloo.com.
+Keep answers concise — 2–4 sentences for simple questions, a little longer for complex ones. Use bullet points for lists. Never fabricate facts.
+
+=== DATA PROCESSING AGREEMENT (DPA) — KEY POINTS ===
+The DPA is a separate document (Schedule 1 to the Terms of Service), not built into the ToS itself.
+Full sub-processor list: trust.gomarloo.com/subprocessors
+
+ROLES
+- Customer = Data Controller
+- Marloo = Data Processor
+- Marloo only processes data on the Customer's documented instructions
+
+DATA LOCATION (CRITICAL — USE THIS FOR UK CUSTOMERS)
+- UK, European and South Africa customers: data is processed in Great Britain & Australia
+- Australian & New Zealand customers: data is processed in Australia
+- Source: DPA Schedule 1, Annex 1, clause 7 (Processing Location)
+
+INTERNATIONAL TRANSFERS
+- Transfers outside UK/EEA/Switzerland are protected by Standard Contractual Clauses (EU-SCCs)
+- UK transfers covered by the UK Addendum (ICO-approved, version B1.0)
+- Swiss transfers covered by Swiss FADP provisions
+- Sub-processors must also comply with equivalent data protection obligations
+
+SUB-PROCESSORS
+- Full list at: trust.gomarloo.com/subprocessors
+- Customers are given general consent to sub-processors; 7 days notice given before adding new ones
+- Customers can object to a new sub-processor within 7 days
+- Marloo remains primarily liable for sub-processor performance
+
+BREACH NOTIFICATION
+- Marloo must notify the Customer "without undue delay" of any personal data breach
+- Notification includes: nature of breach, categories/number of data subjects affected, likely consequences, measures taken
+- Marloo assists Customer in notifying the ICO and affected individuals
+
+DATA SUBJECT REQUESTS
+- Marloo must refer all Data Subject Requests to the Customer within 3 business days
+- Marloo assists Customer in responding to requests (access, erasure, portability etc.)
+
+DATA DELETION & RETURN
+- On termination, Marloo will delete or return all Protected Data at Customer's written request
+- One encrypted backup copy retained for up to 7 years after termination (legal requirement)
+- Customer authorises this single backup copy in the DPA
+
+AUDITS
+- Customers have the right to audit Marloo's data processing (with reasonable notice)
+- Marloo must provide information to demonstrate compliance with Article 28 UK GDPR
+
+GOVERNING LAW (DPA)
+- The DPA is governed by the law of England and Wales (English Courts have exclusive jurisdiction)
+- Note: this differs from the Terms of Service which are governed by New South Wales, Australia law
+
+TECHNICAL & ORGANISATIONAL MEASURES
+- Full details at trust.gomarloo.com
+- DPA Annex 2 sets out all technical and organisational security measures
+
+=== TERMS OF SERVICE (KEY POINTS) ===
+Full terms: gomarloo.com/terms
+
+SUBSCRIPTIONS & PLANS
+- Plans: Pro, Team, Enterprise — see gomarloo.com/pricing
+- Free trial available; can be cancelled by emailing support@gomarloo.com
+- Subscription auto-renews each term unless cancelled
+- Pricing changes don't apply until the next Renewal Date for existing subscribers
+- Payments processed by Stripe; Marloo only sees last 4 digits, card type, name, expiry
+
+CANCELLATION & TERMINATION
+- Either party can cancel with 30 days written notice, not before end of current Subscription Term
+- On termination: all access rights end immediately
+- Customer Data: Marloo may delete data on termination unless the customer requests a backup within 10 days; Marloo will deliver backup within 30 days if all fees are paid
+- No refund on cancellation for convenience or termination for cause; unpaid amounts for the current term become immediately due
+
+DATA ON TERMINATION
+- Customer can request export/backup of their data within 10 days of termination
+- Marloo will deliver backup within 30 days of receiving request (subject to fees being paid)
+- After that, data is removed in accordance with the Privacy Policy and Data Processing Agreement
+- Contact support@gomarloo.com for data deletion or export queries
+
+LIABILITY
+- Marloo's total liability is capped at the total subscription fees paid in the 12 months before the event giving rise to the claim
+- Marloo is not liable for consequential, indirect or special losses (e.g. loss of profits, loss of data)
+- Marloo is provided on an "as available" basis — no guarantee of uninterrupted service
+- Exceptions: liability for death/personal injury from negligence, or fraud, cannot be excluded
+
+CUSTOMER DATA & IP
+- Customers own all their data, templates, transcripts, summaries and file notes
+- Marloo only has a limited licence to process data to deliver the service
+- Outputs generated by Marloo belong to the customer
+- Marloo does not reuse or disclose customer content for any other purpose
+
+AI / GENERATIVE AI
+- AI features are provided by third-party providers (Anthropic, OpenAI, AssemblyAI)
+- Customer inputs are shared with these providers solely to deliver the service
+- Customer data is never used to train AI models
+- Marloo is not responsible for the acts or omissions of AI providers
+- AI outputs should be reviewed by the adviser before use — adviser retains responsibility
+
+AMENDMENTS
+- Marloo can change Terms; material changes require 30 days notice
+- Continued use after notice = acceptance of new terms
+
+GOVERNING LAW
+- Terms governed by laws of New South Wales, Australia
+- Full terms: gomarloo.com/terms
+
+Remember: Short answer first, always. Then offer to go deeper. Never lead with a wall of text.`;
+
+
+function toggleChat() {
+  isOpen = !isOpen;
+  document.getElementById('widget-launcher').classList.toggle('open', isOpen);
+  document.getElementById('chat-window').classList.toggle('open', isOpen);
+  if (isOpen) setTimeout(() => document.getElementById('chat-input').focus(), 320);
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+}
+
+function resize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 90) + 'px';
+}
+
+function now() {
+  return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+function addMsg(role, html) {
+  const wrap = document.getElementById('messages');
+  const d = document.createElement('div');
+  d.className = `msg ${role}`;
+  if (role === 'bot') {
+    d.innerHTML = `<div class="msg-with-avatar"><div class="bot-avatar">M</div><div class="bubble">${html}</div></div><div class="ts">${now()}</div>`;
+  } else {
+    d.innerHTML = `<div class="bubble">${html}</div><div class="ts">${now()}</div>`;
+  }
+  wrap.appendChild(d);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function showTyping() {
+  const wrap = document.getElementById('messages');
+  const d = document.createElement('div');
+  d.id = 'typing'; d.className = 'msg bot';
+  d.innerHTML = '<div class="msg-with-avatar"><div class="bot-avatar">M</div><div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>';
+  wrap.appendChild(d);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function hideTyping() { const t = document.getElementById('typing'); if (t) t.remove(); }
+
+function ask(q) {
+  document.getElementById('chat-input').value = q;
+  send();
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function fmt(text) {
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g,'<em>$1</em>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank">$1</a>')
+    .replace(/\n\n/g,'<br><br>')
+    .replace(/\n[-•*]\s/g,'<br>• ')
+    .replace(/\n/g,'<br>');
+}
+
+async function send() {
+  if (loading) return;
+
+
+  const inp = document.getElementById('chat-input');
+  const text = inp.value.trim();
+  if (!text) return;
+
+  inp.value = ''; inp.style.height = 'auto';
+  document.getElementById('send-btn').disabled = true;
+
+  const pills = document.getElementById('pills');
+  if (pills) pills.style.display = 'none';
+
+  addMsg('user', esc(text));
+  hist.push({ role: 'user', content: text });
+  loading = true;
+  showTyping();
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 700,
+        stream: false,
+        system: SYSTEM,
+        messages: hist
+      })
+    });
+
+    hideTyping();
+
+    const data = await res.json();
+    let reply = 'I had trouble getting a response. Please email <a href="mailto:team@gomarloo.com">team@gomarloo.com</a>.';
+    if (data.content && data.content[0] && data.content[0].text) {
+      reply = fmt(data.content[0].text);
+      hist.push({ role: 'assistant', content: data.content[0].text });
+    } else if (data.error) {
+      reply = `Error: ${data.error.message || 'something went wrong'}.`;
+    }
+    addMsg('bot', reply);
+
+  } catch(e) {
+    hideTyping();
+    addMsg('bot', 'Connection error. Please try again or email <a href="mailto:team@gomarloo.com">team@gomarloo.com</a>.');
+  }
+
+  loading = false;
+  document.getElementById('send-btn').disabled = false;
+  inp.focus();
+}
+</script>
+</body>
+</html>
